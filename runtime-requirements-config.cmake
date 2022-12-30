@@ -9,37 +9,63 @@ function(target_runtime_requirements TARGET)
 endfunction()
 
 function(get_runtime_requirements TARGET OUTPUT)
-  if (TARGET ${TARGET})
-    get_target_property(RUNTIME_REQUIREMENTS ${TARGET} RUNTIME_REQUIREMENTS)
-
-    if (RUNTIME_REQUIREMENTS)
-      list(APPEND TARGET_RUNTIME_REQUIREMENTS ${RUNTIME_REQUIREMENTS})
-    endif()
-
-    get_target_property(PRIVATE_LINK_LIBRARIES   ${TARGET} LINK_LIBRARIES)
-    get_target_property(INTERFACE_LINK_LIBRARIES ${TARGET} INTERFACE_LINK_LIBRARIES)
-
-    set(LINK_LIBRARIES "")
-
-    if (PRIVATE_LINK_LIBRARIES)
-      list(APPEND LINK_LIBRARIES ${PRIVATE_LINK_LIBRARIES})
-    endif()
-
-    if (INTERFACE_LINK_LIBRARIES)
-      list(APPEND LINK_LIBRARIES ${INTERFACE_LINK_LIBRARIES})
-    endif()
-
-    if (LINK_LIBRARIES)
-      list(REMOVE_DUPLICATES LINK_LIBRARIES)
-
-      foreach(LINK_LIBRARY ${LINK_LIBRARIES})
-        get_runtime_requirements(${LINK_LIBRARY} TARGET_RUNTIME_REQUIREMENTS)
-      endforeach()
-    endif()
-
-    list(REMOVE_DUPLICATES TARGET_RUNTIME_REQUIREMENTS)
-    set(${OUTPUT} ${TARGET_RUNTIME_REQUIREMENTS} PARENT_SCOPE)
+  # quality of life error for bad calls
+  if (NOT TARGET ${TARGET})
+    message(FATAL_ERROR "${TARGET} is not a CMake target!")
   endif()
+
+  # infinite recursion guard
+  get_target_property(RUNTIME_REQUIREMENTS_VISITING ${TARGET} RUNTIME_REQUIREMENTS_VISITING)
+  if (RUNTIME_REQUIREMENTS_VISITING)
+    return()
+  endif()
+
+  # enable infinite recursion guard
+  set_target_property(${TARGET} RUNTIME_REQUIREMENTS_VISITING TRUE)
+
+  # handle requrements of a current target
+  get_target_property(RUNTIME_REQUIREMENTS ${TARGET} RUNTIME_REQUIREMENTS)
+
+  if (RUNTIME_REQUIREMENTS)
+    list(APPEND TARGET_RUNTIME_REQUIREMENTS ${RUNTIME_REQUIREMENTS})
+  endif()
+
+  # gather all dependencies of the current target
+  get_target_property(LINK_LIBRARIES              ${TARGET} LINK_LIBRARIES)
+  get_target_property(INTERFACE_LINK_LIBRARIES    ${TARGET} INTERFACE_LINK_LIBRARIES)
+  get_target_property(MANUALLY_ADDED_DEPENDENCIES ${TARGET} MANUALLY_ADDED_DEPENDENCIES)
+
+  set(TARGET_DEPENDENCIES "")
+
+  if (LINK_LIBRARIES)
+    list(APPEND TARGET_DEPENDENCIES ${LINK_LIBRARIES})
+  endif()
+
+  if (INTERFACE_LINK_LIBRARIES)
+    list(APPEND TARGET_DEPENDENCIES ${INTERFACE_LINK_LIBRARIES})
+  endif()
+
+  if (MANUALLY_ADDED_DEPENDENCIES)
+    list(APPEND TARGET_DEPENDENCIES ${MANUALLY_ADDED_DEPENDENCIES})
+  endif()
+
+  # handle recursive call to all dependencies
+  if (TARGET_DEPENDENCIES)
+    list(REMOVE_DUPLICATES TARGET_DEPENDENCIES)
+
+    foreach(TARGET_DEPENDENCY ${TARGET_DEPENDENCIES})
+      if (TARGET ${TARGET_DEPENDENCY})
+        get_runtime_requirements(${TARGET_DEPENDENCY} TARGET_RUNTIME_REQUIREMENTS)
+      endif()
+    endforeach()
+  endif()
+
+  # reset infinite recursion guard
+  set_target_property(${TARGET} RUNTIME_REQUIREMENTS_VISITING "")
+
+  # set output variable
+  list(REMOVE_DUPLICATES TARGET_RUNTIME_REQUIREMENTS)
+  set(${OUTPUT} ${TARGET_RUNTIME_REQUIREMENTS} PARENT_SCOPE)
 endfunction()
 
 function(copy_runtime_requirements TARGET DIRECTORY)
