@@ -4,6 +4,6 @@
 #include <iostream>
 
 void base() {
-  std::ifstream file("base-data.txt");
+  std::ifstream file("base-data/base-data.txt");
   std::cout << file.rdbuf();
 }

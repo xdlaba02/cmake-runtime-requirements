@@ -1,12 +1,11 @@
 # Copyright (c) 2022 Drahomir Dlabaja
 
-# TODO consider subdirectories and relative paths while copying dependencies
-
 function(target_runtime_requirements TARGET)
-  foreach(RUTNIME_DEPENDENCY ${ARGN})
-    get_filename_component(ABSOLUTE_PATH ${RUTNIME_DEPENDENCY} ABSOLUTE)
-    set_property(TARGET ${TARGET} PROPERTY RUNTIME_REQUIREMENTS ${ABSOLUTE_PATH} APPEND)
-  endforeach()
+  while(ARGN)
+    list(POP_FRONT ARGN SRC DST)
+    get_filename_component(ABSOLUTE_PATH ${SRC} ABSOLUTE)
+    set_property(TARGET ${TARGET} PROPERTY RUNTIME_REQUIREMENTS "${ABSOLUTE_PATH}:${DST}" APPEND)
+  endwhile()
 endfunction()
 
 function(get_runtime_requirements TARGET OUTPUT)
@@ -45,7 +44,12 @@ endfunction()
 
 function(copy_runtime_requirements TARGET DIRECTORY)
   get_runtime_requirements(${TARGET} TARGET_RUNTIME_REQUIREMENTS)
-  foreach(TARGET_RUNTIME_REQUIREMENT ${TARGET_RUNTIME_REQUIREMENTS})
-    configure_file(${TARGET_RUNTIME_REQUIREMENT} ${DIRECTORY} COPYONLY)
+
+  foreach(REQUIREMENT_PAIR ${TARGET_RUNTIME_REQUIREMENTS})
+    string(REPLACE ":" ";" REQUIREMENT_PAIR ${REQUIREMENT_PAIR})
+    list(GET REQUIREMENT_PAIR 0 SRC)
+    list(GET REQUIREMENT_PAIR 1 DST)
+    file(MAKE_DIRECTORY ${DIRECTORY}/${DST})
+    configure_file("${SRC}" "${DIRECTORY}/${DST}/" COPYONLY)
   endforeach()
 endfunction()
