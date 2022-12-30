@@ -21,7 +21,7 @@ function(get_runtime_requirements TARGET OUTPUT)
   endif()
 
   # enable infinite recursion guard
-  set_target_property(${TARGET} RUNTIME_REQUIREMENTS_VISITING TRUE)
+  set_target_properties(${TARGET} PROPERTIES RUNTIME_REQUIREMENTS_VISITING TRUE)
 
   # handle requrements of a current target
   get_target_property(RUNTIME_REQUIREMENTS ${TARGET} RUNTIME_REQUIREMENTS)
@@ -61,7 +61,7 @@ function(get_runtime_requirements TARGET OUTPUT)
   endif()
 
   # reset infinite recursion guard
-  set_target_property(${TARGET} RUNTIME_REQUIREMENTS_VISITING "")
+  set_target_properties(${TARGET} PROPERTIES RUNTIME_REQUIREMENTS_VISITING "")
 
   # set output variable
   list(REMOVE_DUPLICATES TARGET_RUNTIME_REQUIREMENTS)
